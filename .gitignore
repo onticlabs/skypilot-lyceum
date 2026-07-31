@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+.tox/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+# This is a library, not an application: consumers resolve `skypilot-lyceum`
+# against their own environment, so a committed lockfile would pin only this
+# repo's dev venv while adding ~1 MB of churn. Dependency bounds live in
+# pyproject.toml.
+uv.lock

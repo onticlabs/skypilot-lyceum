@@ -1,0 +1,9 @@
+{"vm_id": "9918b72c1dce41a6875abaf5d5ab64e9", "status": "pending", "ip_address": null,
+ "created_at": "2026-07-31T12:14:40.153832",
+ "instance_specs": {"gpu_type": "l40s", "gpu_count": 1},
+ "hardware_profile": null, "gpu_count": null, "instance_type": "on-demand",
+ "name": "hyd-production-vm-d9m93a707u65dhihp6i0", "display_name": "sky-spike-l40s-0",
+ "billed": null, "croesus_billed": null,
+ "status_check_url": "/api/v2/external/vms/9918b72c1dce41a6875abaf5d5ab64e9/status",
+ "polling_message": "Instance is provisioning. Check status with GET /api/v2/external/vms/{vm_id}/status or use the CLI to automatically poll for readiness.",
+ "user_id": "00000000-0000-4000-8000-000000000001", "org_id": "00000000-0000-4000-8000-000000000002"}

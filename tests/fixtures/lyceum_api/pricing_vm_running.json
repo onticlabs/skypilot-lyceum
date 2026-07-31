@@ -1,0 +1,484 @@
+{
+ "prices": [
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.a100.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00044167",
+   "unit_price_per_hour": "1.59001200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.a100.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00088333",
+   "unit_price_per_hour": "3.17998800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.a100.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00176667",
+   "unit_price_per_hour": "6.36001200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.a100.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00353333",
+   "unit_price_per_hour": "12.71998800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b200.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00180278",
+   "unit_price_per_hour": "6.49000800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b200.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00360556",
+   "unit_price_per_hour": "12.98001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b200.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00721111",
+   "unit_price_per_hour": "25.95999600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b200.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.01442222",
+   "unit_price_per_hour": "51.91999200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b300.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00221944",
+   "unit_price_per_hour": "7.98998400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b300.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00443889",
+   "unit_price_per_hour": "15.98000400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b300.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00887778",
+   "unit_price_per_hour": "31.96000800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.b300.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.01775556",
+   "unit_price_per_hour": "63.92001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h100.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.000775",
+   "unit_price_per_hour": "2.790000"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h100.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00155",
+   "unit_price_per_hour": "5.58000"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h100.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.0031",
+   "unit_price_per_hour": "11.1600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h100.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.0062",
+   "unit_price_per_hour": "22.3200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h200.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00119167",
+   "unit_price_per_hour": "4.29001200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h200.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00238333",
+   "unit_price_per_hour": "8.57998800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h200.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00476667",
+   "unit_price_per_hour": "17.16001200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.h200.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00953333",
+   "unit_price_per_hour": "34.31998800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.l40s.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00033056",
+   "unit_price_per_hour": "1.19001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.l40s.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00066111",
+   "unit_price_per_hour": "2.37999600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.l40s.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00132222",
+   "unit_price_per_hour": "4.75999200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "on-demand.l40s.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00264444",
+   "unit_price_per_hour": "9.51998400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.a100.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00022222",
+   "unit_price_per_hour": "0.79999200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.a100.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00044444",
+   "unit_price_per_hour": "1.59998400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.a100.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00088889",
+   "unit_price_per_hour": "3.20000400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.a100.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00177778",
+   "unit_price_per_hour": "6.40000800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b200.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00066667",
+   "unit_price_per_hour": "2.40001200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b200.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00133333",
+   "unit_price_per_hour": "4.79998800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b200.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00266667",
+   "unit_price_per_hour": "9.60001200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b200.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00533333",
+   "unit_price_per_hour": "19.19998800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b300.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00083056",
+   "unit_price_per_hour": "2.99001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b300.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00166111",
+   "unit_price_per_hour": "5.97999600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b300.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00332222",
+   "unit_price_per_hour": "11.95999200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.b300.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00664444",
+   "unit_price_per_hour": "23.91998400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h100.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00030556",
+   "unit_price_per_hour": "1.10001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h100.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00061111",
+   "unit_price_per_hour": "2.19999600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h100.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00122222",
+   "unit_price_per_hour": "4.39999200"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h100.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00244444",
+   "unit_price_per_hour": "8.79998400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h200.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00044444",
+   "unit_price_per_hour": "1.59998400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h200.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00088889",
+   "unit_price_per_hour": "3.20000400"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h200.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00177778",
+   "unit_price_per_hour": "6.40000800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.h200.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00355556",
+   "unit_price_per_hour": "12.80001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.l40s.1x"
+   },
+   "unit": "second",
+   "unit_price": "0.00015278",
+   "unit_price_per_hour": "0.55000800"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.l40s.2x"
+   },
+   "unit": "second",
+   "unit_price": "0.00030556",
+   "unit_price_per_hour": "1.10001600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.l40s.4x"
+   },
+   "unit": "second",
+   "unit_price": "0.00061111",
+   "unit_price_per_hour": "2.19999600"
+  },
+  {
+   "meter_slug": "vm_running",
+   "resource": "vm",
+   "applies_to": {
+    "hardware_profile": "spot.l40s.8x"
+   },
+   "unit": "second",
+   "unit_price": "0.00122222",
+   "unit_price_per_hour": "4.39999200"
+  }
+ ]
+}

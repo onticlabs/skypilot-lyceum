@@ -1,0 +1,5 @@
+{"vm_id": "3044903794294bd19dd457ea6784ad91", "status": "ready",
+ "ip_address": null, "uptime_seconds": 0, "billed": null, "croesus_billed": null,
+ "instance_specs": {"gpu_type": "h200", "gpu_count": 1}, "hardware_profile": "h200",
+ "gpu_count": 1, "instance_type": "on-demand", "created_at": "2026-07-31T14:31:10.000000Z",
+ "name": "hyd-production-vm-d9mb1xx07u65dhihp6k0", "display_name": "sky-spec-h200"}

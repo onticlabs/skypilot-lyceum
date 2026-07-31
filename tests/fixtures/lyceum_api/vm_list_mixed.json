@@ -1,0 +1,20 @@
+{"vms": [
+ {"vm_id": "fa292eba-16ba-4dd2-8c31-f58ac11d87bf", "status": "terminated", "ip_address": "198.51.100.20:22",
+  "created_at": "2026-07-31T14:04:04.426796Z", "instance_specs": {"gpu_type": "h100", "gpu_count": 1},
+  "hardware_profile": "h100", "gpu_count": 1, "instance_type": "spot",
+  "name": "hyd-production-vm-d9mamgf07u65dhihp6j0", "display_name": "sky-cluster-abc",
+  "billed": 0.0, "croesus_billed": null, "status_check_url": null, "polling_message": null,
+  "user_id": "00000000-0000-4000-8000-000000000001", "org_id": "00000000-0000-4000-8000-000000000002"},
+ {"vm_id": "9918b72c1dce41a6875abaf5d5ab64e9", "status": "ready", "ip_address": "203.0.113.10",
+  "created_at": "2026-07-31T15:00:00.000000Z", "instance_specs": {"gpu_type": "l40s", "gpu_count": 1},
+  "hardware_profile": "l40s", "gpu_count": 1, "instance_type": "on-demand",
+  "name": "hyd-production-vm-d9m93a707u65dhihp6i0", "display_name": "sky-cluster-abc",
+  "billed": 0.0, "croesus_billed": null, "status_check_url": null, "polling_message": null,
+  "user_id": "00000000-0000-4000-8000-000000000001", "org_id": "00000000-0000-4000-8000-000000000002"},
+ {"vm_id": "6f3bd1ec9f524d6c83a24078b94e214c", "status": "provisioning", "ip_address": null,
+  "created_at": "2026-07-31T15:05:00.000000Z", "instance_specs": {"gpu_type": "a100", "gpu_count": 2},
+  "hardware_profile": "a100", "gpu_count": 2, "instance_type": "on-demand",
+  "name": "hyd-production-vm-d9majt707u65dhihp6ig", "display_name": "sky-cluster-other",
+  "billed": null, "croesus_billed": null, "status_check_url": null, "polling_message": null,
+  "user_id": "00000000-0000-4000-8000-000000000001", "org_id": "00000000-0000-4000-8000-000000000002"}
+], "total": 3}

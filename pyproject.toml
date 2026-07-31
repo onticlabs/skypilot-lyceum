@@ -1,0 +1,48 @@
+[project]
+name = "skypilot-lyceum"
+version = "0.1.0.dev0"
+description = "Lyceum GPU cloud provider plugin for SkyPilot"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["skypilot", "lyceum", "gpu", "cloud", "provisioner"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Distributed Computing",
+]
+# skypilot is pinned EXACTLY, and is a hard runtime dependency rather than an
+# extra. THREE of this package's seams are monkeypatches anchored to 0.13.0
+# internals (`skylet.constants.ALL_CLOUDS`, the `sky.catalog.<cloud>_catalog`
+# module-name convention, and `backend_utils._add_auth_to_cluster_config`),
+# and the provisioner's
+# signatures are bound at dispatch by `inspect.signature(...).bind`. Installing
+# against a different SkyPilot should fail at resolve time, loudly, rather than
+# at launch time inside a provisioning run. The patches also refuse to apply on
+# anchor drift, so this pin is the outer of two guards, not the only one.
+dependencies = ["requests>=2.31", "pandas>=2.0", "skypilot==0.13.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov"]
+
+[project.urls]
+Homepage = "https://github.com/onticlabs/skypilot-lyceum"
+Source = "https://github.com/onticlabs/skypilot-lyceum"
+Issues = "https://github.com/onticlabs/skypilot-lyceum/issues"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["skypilot_lyceum*"]
+
+[tool.setuptools.package-data]
+skypilot_lyceum = ["templates/*.j2", "data/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -1,0 +1,76 @@
+{# Lyceum cluster config template.
+
+   Shipped by this package, NOT by SkyPilot, and wired in via
+   `Provisioner.template_override` returning a `TemplateSpec` with an ABSOLUTE
+   path -- `sky/provision/__init__.py` documents absolute paths as the
+   plugin-shipped case.
+
+   Adapted from sky/templates/shadeform-ray.yml.j2 (skypilot 0.13.0). Two
+   deliberate divergences, both empirically grounded:
+     * ssh_user is `lyceum`, not root and not `shadeform` (C1 -- the vendor docs
+       say root; root and ubuntu are both refused by the real image).
+     * no ssh_key_id: Lyceum takes the public key inline on every create call
+       and has no SSH-key registry to pre-register against.
+#}
+cluster_name: {{cluster_name_on_cloud}}
+
+# Lyceum has no multi-node support outside enterprise contracts, so this is
+# always 0. Declared for template compatibility with the Ray config schema.
+max_workers: {{num_nodes - 1}}
+upscaling_speed: {{num_nodes - 1}}
+idle_timeout_minutes: 60
+
+provider:
+  type: external
+  module: skypilot_lyceum.provision
+  region: "{{region}}"
+  disable_launch_config_check: true
+
+auth:
+  ssh_user: {{ssh_user}}
+  ssh_private_key: {{ssh_private_key}}
+
+available_node_types:
+  ray_head_default:
+{%- if custom_resources %}
+    resources: {{custom_resources}}
+{%- else %}
+    resources: {}
+{%- endif %}
+    node_config:
+      InstanceType: {{instance_type}}
+      HardwareProfile: {{hardware_profile}}
+      GpuCount: {{gpu_count}}
+      UseSpot: {{use_spot}}
+      PublicKey: |-
+        skypilot:ssh_public_key_content
+
+head_node_type: ray_head_default
+
+# Format: `REMOTE_PATH : LOCAL_PATH`
+file_mounts: {
+  "{{sky_ray_yaml_remote_path}}": "{{sky_ray_yaml_local_path}}",
+  "{{sky_remote_path}}/{{sky_wheel_hash}}": "{{sky_local_path}}",
+{%- for remote_path, local_path in credentials.items() %}
+  "{{remote_path}}": "{{local_path}}",
+{%- endfor %}
+}
+
+rsync_exclude: []
+
+initialization_commands: []
+
+# Performance-sensitive: each item is one SSH round trip. Keep co-located.
+setup_commands:
+  - {%- for initial_setup_command in initial_setup_commands %}
+    {{ initial_setup_command }}
+    {%- endfor %}
+    mkdir -p ~/.ssh; touch ~/.ssh/config; which patch > /dev/null || sudo apt install -y patch;
+    {{ conda_installation_commands }}
+    {{ uv_installation_commands }}
+    {{ ray_skypilot_installation_commands }}
+    {{ copy_skypilot_templates_commands }}
+    sudo bash -c 'rm -rf /etc/security/limits.d; echo "* soft nofile 1048576" >> /etc/security/limits.conf; echo "* hard nofile 1048576" >> /etc/security/limits.conf';
+    sudo grep -e '^DefaultTasksMax' /etc/systemd/system.conf || (sudo bash -c 'echo "DefaultTasksMax=infinity" >> /etc/systemd/system.conf'); sudo systemctl set-property user-$(id -u $(whoami)).slice TasksMax=infinity; sudo systemctl daemon-reload;
+    (grep -Pzo -q "Host \*\n  StrictHostKeyChecking no" ~/.ssh/config) || printf "Host *\n  StrictHostKeyChecking no\n" >> ~/.ssh/config;
+    {{ ssh_max_sessions_config }}

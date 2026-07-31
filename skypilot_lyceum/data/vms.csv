@@ -1,0 +1,25 @@
+InstanceType,AcceleratorName,AcceleratorCount,vCPUs,MemoryGiB,Price,SpotPrice,Region,GpuInfo,SpecsMeasured
+a100.1x,A100,1,16,94,1.590012,0.799992,lyceum,"{'Gpus': [{'Name': 'A100', 'Count': 1, 'MemoryInfo': {'SizeInMiB': 81920}}], 'TotalGpuMemoryInMiB': 81920}",True
+a100.2x,A100,2,32,188,3.179988,1.599984,lyceum,"{'Gpus': [{'Name': 'A100', 'Count': 2, 'MemoryInfo': {'SizeInMiB': 81920}}], 'TotalGpuMemoryInMiB': 163840}",True
+a100.4x,A100,4,64,376,6.360012,3.200004,lyceum,"{'Gpus': [{'Name': 'A100', 'Count': 4, 'MemoryInfo': {'SizeInMiB': 81920}}], 'TotalGpuMemoryInMiB': 327680}",True
+a100.8x,A100,8,128,752,12.719988,6.400008,lyceum,"{'Gpus': [{'Name': 'A100', 'Count': 8, 'MemoryInfo': {'SizeInMiB': 81920}}], 'TotalGpuMemoryInMiB': 655360}",True
+b200.1x,B200,1,32,181,6.490008,2.400012,lyceum,"{'Gpus': [{'Name': 'B200', 'Count': 1, 'MemoryInfo': {'SizeInMiB': 183359}}], 'TotalGpuMemoryInMiB': 183359}",False
+b200.2x,B200,2,64,362,12.980016,4.799988,lyceum,"{'Gpus': [{'Name': 'B200', 'Count': 2, 'MemoryInfo': {'SizeInMiB': 183359}}], 'TotalGpuMemoryInMiB': 366718}",False
+b200.4x,B200,4,128,724,25.959996,9.600012,lyceum,"{'Gpus': [{'Name': 'B200', 'Count': 4, 'MemoryInfo': {'SizeInMiB': 183359}}], 'TotalGpuMemoryInMiB': 733436}",False
+b200.8x,B200,8,256,1448,51.919992,19.199988,lyceum,"{'Gpus': [{'Name': 'B200', 'Count': 8, 'MemoryInfo': {'SizeInMiB': 183359}}], 'TotalGpuMemoryInMiB': 1466872}",False
+b300.1x,B300,1,32,181,7.989984,2.990016,lyceum,"{'Gpus': [{'Name': 'B300', 'Count': 1, 'MemoryInfo': {'SizeInMiB': 288358}}], 'TotalGpuMemoryInMiB': 288358}",False
+b300.2x,B300,2,64,362,15.980004,5.979996,lyceum,"{'Gpus': [{'Name': 'B300', 'Count': 2, 'MemoryInfo': {'SizeInMiB': 288358}}], 'TotalGpuMemoryInMiB': 576716}",False
+b300.4x,B300,4,128,724,31.960008,11.959992,lyceum,"{'Gpus': [{'Name': 'B300', 'Count': 4, 'MemoryInfo': {'SizeInMiB': 288358}}], 'TotalGpuMemoryInMiB': 1153432}",False
+b300.8x,B300,8,256,1448,63.920016,23.919984,lyceum,"{'Gpus': [{'Name': 'B300', 'Count': 8, 'MemoryInfo': {'SizeInMiB': 288358}}], 'TotalGpuMemoryInMiB': 2306864}",False
+h100.1x,H100,1,32,181,2.79,1.100016,lyceum,"{'Gpus': [{'Name': 'H100', 'Count': 1, 'MemoryInfo': {'SizeInMiB': 81559}}], 'TotalGpuMemoryInMiB': 81559}",True
+h100.2x,H100,2,64,362,5.58,2.199996,lyceum,"{'Gpus': [{'Name': 'H100', 'Count': 2, 'MemoryInfo': {'SizeInMiB': 81559}}], 'TotalGpuMemoryInMiB': 163118}",True
+h100.4x,H100,4,128,724,11.16,4.399992,lyceum,"{'Gpus': [{'Name': 'H100', 'Count': 4, 'MemoryInfo': {'SizeInMiB': 81559}}], 'TotalGpuMemoryInMiB': 326236}",True
+h100.8x,H100,8,256,1448,22.32,8.799984,lyceum,"{'Gpus': [{'Name': 'H100', 'Count': 8, 'MemoryInfo': {'SizeInMiB': 81559}}], 'TotalGpuMemoryInMiB': 652472}",True
+h200.1x,H200,1,16,196,4.290012,1.599984,lyceum,"{'Gpus': [{'Name': 'H200', 'Count': 1, 'MemoryInfo': {'SizeInMiB': 143771}}], 'TotalGpuMemoryInMiB': 143771}",True
+h200.2x,H200,2,32,392,8.579988,3.200004,lyceum,"{'Gpus': [{'Name': 'H200', 'Count': 2, 'MemoryInfo': {'SizeInMiB': 143771}}], 'TotalGpuMemoryInMiB': 287542}",True
+h200.4x,H200,4,64,784,17.160012,6.400008,lyceum,"{'Gpus': [{'Name': 'H200', 'Count': 4, 'MemoryInfo': {'SizeInMiB': 143771}}], 'TotalGpuMemoryInMiB': 575084}",True
+h200.8x,H200,8,128,1568,34.319988,12.800016,lyceum,"{'Gpus': [{'Name': 'H200', 'Count': 8, 'MemoryInfo': {'SizeInMiB': 143771}}], 'TotalGpuMemoryInMiB': 1150168}",True
+l40s.1x,L40S,1,12,70,1.190016,0.550008,lyceum,"{'Gpus': [{'Name': 'L40S', 'Count': 1, 'MemoryInfo': {'SizeInMiB': 46068}}], 'TotalGpuMemoryInMiB': 46068}",True
+l40s.2x,L40S,2,24,140,2.379996,1.100016,lyceum,"{'Gpus': [{'Name': 'L40S', 'Count': 2, 'MemoryInfo': {'SizeInMiB': 46068}}], 'TotalGpuMemoryInMiB': 92136}",True
+l40s.4x,L40S,4,48,280,4.759992,2.199996,lyceum,"{'Gpus': [{'Name': 'L40S', 'Count': 4, 'MemoryInfo': {'SizeInMiB': 46068}}], 'TotalGpuMemoryInMiB': 184272}",True
+l40s.8x,L40S,8,96,560,9.519984,4.399992,lyceum,"{'Gpus': [{'Name': 'L40S', 'Count': 8, 'MemoryInfo': {'SizeInMiB': 46068}}], 'TotalGpuMemoryInMiB': 368544}",True
