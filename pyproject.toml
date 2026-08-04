@@ -9,7 +9,6 @@ license-files = ["LICENSE"]
 keywords = ["skypilot", "lyceum", "gpu", "cloud", "provisioner"]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Topic :: System :: Distributed Computing",
