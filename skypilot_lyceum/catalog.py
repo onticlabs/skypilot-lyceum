@@ -121,7 +121,7 @@ def _get_client():
 
 
 def _reset_caches() -> None:
-    """Drop the price and availability caches. For tests and for the reaper."""
+    """Drop the price and availability caches. For tests."""
     global _PRICE_CACHE, _AVAILABILITY_CACHE, _DF_CACHE
     _PRICE_CACHE = None
     _AVAILABILITY_CACHE = None

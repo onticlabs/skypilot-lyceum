@@ -1139,4 +1139,4 @@ def test_the_skylet_still_has_no_plugin_hook_so_the_pth_is_still_needed():
     skylet_callers = {c for c in callers if c.startswith('skylet/')}
     assert not skylet_callers, (
         'the skylet now loads plugins, so node-side autodown may be possible; '
-        f'revisit the reaper-as-authority design. callers: {skylet_callers}')
+        f'the .pth hack can then be deleted. callers: {skylet_callers}')

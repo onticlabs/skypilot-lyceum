@@ -112,7 +112,15 @@ def _install_command(remote_wheel: str) -> str:
     That is the deliberate trade: a node that cannot delete itself is worse than
     a launch that did not happen. Lyceum has no stop and no cloud-side TTL, so
     such a node bills from `ready` until a human notices -- unbounded in time,
-    up to $63.92/h. A failed launch costs one retry.
+    up to $63.92/h.
+
+    What failing here does NOT do is delete the VM. SkyPilot's teardown-on-error
+    wraps provisioning, not runtime setup, so the machine is left running as a
+    visible INIT cluster. On the ontic path `launch._reconcile_orphan` then sees
+    it and calls `sky down`; off that path a human must. So the honest claim is
+    that this converts an INVISIBLE, unbounded leak -- a node that looks healthy
+    and can never delete itself -- into a loud, visible, usually self-cleaning
+    one. Not that the node never exists.
 
     The last step is the point of the whole thing. `pip install` exiting 0 says a
     file was copied; it does not say the skylet will be able to resolve the cloud

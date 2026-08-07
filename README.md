@@ -316,12 +316,27 @@ an external sweep the authoritative teardown. Two findings retired it:
 What remained was a node whose plugin install silently failed, which would run
 its job correctly and then be unable to delete itself. That is now caught where
 it originates: the setup step **verifies** that registration works in the node's
-own interpreter, and fails the launch if it does not. A node that cannot delete
-itself does not get to exist.
+own interpreter, and fails the launch if it does not.
 
-The residual gap, stated honestly: a skylet that dies outright never fires
-autostop, so nothing on the node or off it will end that VM. `ontic cluster
-list` and `ontic cost` both surface it; no automation collects it.
+Note what that failure does and does not do. SkyPilot's teardown-on-error wraps
+provisioning, not runtime setup, so the VM is left running as a **visible INIT
+cluster** rather than deleted. On the ontic path `launch._reconcile_orphan`
+notices and issues `sky down`; off it, a human must. The gain is turning an
+invisible unbounded leak into a loud, visible, usually self-cleaning one.
+
+### Residual gaps, ranked
+
+1. **A node reboot.** SkyPilot invalidates the autostop config when `boot_time`
+   changes and nothing ever re-arms it, so the cluster shows `UP` and bills
+   silently. This is the worst of the three because it is the only one that is
+   silent again.
+2. **A launch that fails outside the ontic client** (raw `sky launch`, or the
+   client dying while the server's `retry_until_up` loop later succeeds): a
+   visible cluster billing until someone acts.
+3. **A skylet that dies outright** never fires autostop at all; visible as `UP`.
+
+All three are surfaced by `ontic cluster list` and `ontic cost`. None is
+collected automatically.
 
 ## Status and maturity
 

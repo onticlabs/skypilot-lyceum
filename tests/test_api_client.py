@@ -244,7 +244,7 @@ class TestVMStatusProperties:
     def test_unknown_status_is_not_terminal(self):
         """DECISION: an unrecognised status counts as alive.
 
-        Asymmetric costs. Believing a live VM is dead makes the reaper skip it
+        Asymmetric costs. Believing a live VM is dead makes autodown skip it
         and the provisioner launch a duplicate -- two machines billing at up
         to $63.92/h. Believing a dead VM is alive costs one failed SSH. So an
         unknown status is never terminal.
@@ -638,7 +638,7 @@ class TestListVMs:
                 assert value in (False, 'false'), f'{key}={value!r}'
 
     def test_include_terminated_true_sends_true(self, api_key, monkeypatch):
-        """The reaper needs the opposite view: everything, including corpses.
+        """Teardown needs the opposite view: everything, including corpses.
 
         Terminating an orphan requires first seeing it.
         """
@@ -666,7 +666,7 @@ class TestListVMs:
     def test_include_terminated_true_keeps_terminal_vms(self, api_key,
                                                         monkeypatch):
         """Asking for terminated VMs and getting them filtered out would make
-        the orphan reaper structurally unable to see its targets."""
+        node-side autodown structurally unable to see its targets."""
         install(monkeypatch, [response('vm_list_mixed')])
         vms = client().list_vms(include_terminated=True)
 
@@ -830,7 +830,7 @@ class TestTerminateVM:
             'fa292eba-16ba-4dd2-8c31-f58ac11d87bf')
 
     def test_404_is_success(self, api_key, monkeypatch):
-        """Teardown is retried and races with the reaper.
+        """Teardown is retried and races with autodown.
 
         Already-gone is the outcome we wanted. Raising here would abort
         SkyPilot's `down` path and leave the cluster marked as live.
@@ -858,7 +858,7 @@ class TestTerminateVM:
 
     def test_auth_failure_on_delete_still_raises(self, api_key, monkeypatch):
         """Idempotency covers 404 only. A 401 means we deleted nothing and must
-        say so, or the reaper will report a clean sweep it never made."""
+        say so, or autodown will report a clean sweep it never made."""
         install(monkeypatch,
                 [response({'detail': 'Invalid API key'}, status=401)])
         with pytest.raises(api.LyceumAuthError):
@@ -1240,7 +1240,7 @@ class TestClientCredentialResolution:
 
     def test_explicit_key_wins(self, monkeypatch, tmp_path):
         """A key passed to the constructor must not be overridden by ambient
-        environment: the reaper and the provisioner may run in the same process
+        environment: autodown and the provisioner may run in the same process
         as other credentials, and picking up the wrong one deletes VMs in
         whichever org the env var happens to name."""
         monkeypatch.setenv('LYCEUM_API_KEY', 'lk_from_env')

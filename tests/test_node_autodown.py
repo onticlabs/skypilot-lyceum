@@ -156,8 +156,10 @@ def test_register_makes_the_stop_path_resolvable(lyceum_enabled):
 # Getting this package onto the node
 # --------------------------------------------------------------------------
 def test_no_wheel_means_no_mounts_and_no_setup(monkeypatch):
-    """Degrade cleanly. A server built without the wheel still launches jobs;
-    it just cannot self-terminate, and falls back to the reaper."""
+    """A build configuration, not a runtime failure: a laptop, or an image built
+    without the wheel step. Renders nothing, so nothing is installed and nothing
+    is verified. The API server's Dockerfile asserts the wheel IS present, so on
+    the control plane this cannot silently happen."""
     monkeypatch.setattr(node_autodown, 'find_wheel', lambda: None)
     v = node_autodown.template_variables()
     assert v['lyceum_file_mounts'] == {}
