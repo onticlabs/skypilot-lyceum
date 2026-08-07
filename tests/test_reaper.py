@@ -12,7 +12,23 @@ test; the refusals are the rest.
 from __future__ import annotations
 
 import pytest
-from skypilot_lyceum import api, reaper
+from skypilot_lyceum import api, intent, reaper
+
+
+@pytest.fixture(autouse=True)
+def _ledger(tmp_path):
+    """Give every test its own intent ledger, pre-populated by `_vm`.
+
+    The reaper now only considers VMs this control plane recorded an intent to
+    create — a name is not an ownership test (see `intent.py`). These tests
+    predate that and build VMs directly, so `_vm` records as it constructs:
+    they are all, by construction, VMs we made. `test_reaper_hardening.py`
+    covers the case this fixture deliberately makes impossible — a VM with no
+    receipt.
+    """
+    intent.set_ledger_path(tmp_path / 'ledger.jsonl')
+    yield
+    intent.set_ledger_path(None)
 
 
 def _vm(name, *, status='ready', age_s=7200, vm_id=None):
@@ -21,6 +37,7 @@ def _vm(name, *, status='ready', age_s=7200, vm_id=None):
     created = (datetime.datetime(2026, 7, 31, 12, 0, 0,
                                  tzinfo=datetime.timezone.utc) -
                datetime.timedelta(seconds=age_s))
+    intent.record(name)          # see the _ledger fixture
     return api.VM(
         vm_id=vm_id or f'id-{name}', status=status, display_name=name,
         hardware_profile='l40s', gpu_count=1, instance_type='on-demand',

@@ -31,7 +31,7 @@ from sky.provision import common
 from sky.utils import status_lib
 
 # Same -- the exception types are caught, not merely annotated.
-from skypilot_lyceum import api
+from skypilot_lyceum import api, intent
 
 logger = sky_logging.init_logger(__name__)
 
@@ -280,6 +280,13 @@ def run_instances(region: str, cluster_name: str, cluster_name_on_cloud: str,
         return _record(region, cluster_name_on_cloud, head.vm_id, [])
 
     profile, gpu_count, use_spot, public_key = _node_spec(config)
+
+    # The receipt, written BEFORE the create. If this process dies between here
+    # and Lyceum acknowledging the VM, the orphan reaper can still collect it --
+    # which is the entire leak this ledger exists to close. Recording afterwards
+    # would be missing for exactly the VM worth finding. Best-effort inside:
+    # a failed ledger write must not fail a launch.
+    intent.record(cluster_name_on_cloud)
 
     created_instance_id: Optional[str] = None
     try:

@@ -12,7 +12,11 @@ This is destructive automation pointed at production, so it is built to refuse:
   * dry run by default -- terminating requires opting in
   * a VM belonging to a live cluster is never touched
   * a VM younger than the grace window is never touched (it may be provisioning)
-  * a VM whose name is not SkyPilot-shaped is never touched (a human made it)
+  * a VM this control plane has no RECORD of creating is never touched -- see
+    `intent.py`. A name is not an ownership test: it cannot tell our cluster
+    from a colleague's, or from another SkyPilot install sharing the org key
+  * too many candidates at once raises rather than reaps: that pattern means we
+    lost our own records, not that the fleet was abandoned
   * an UNKNOWN cluster set raises rather than treating "I don't know" as
     "nothing is running" -- see `UnknownClusterStateError`
 
@@ -23,10 +27,15 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import logging
+import pathlib
 import re
+import time
 from typing import Any, Iterable, List, Optional, Sequence, Set
 
-from skypilot_lyceum import api
+from skypilot_lyceum import api, intent
+
+logger = logging.getLogger(__name__)
 
 #: How old a VM must be before it can be considered abandoned. Provisioning was
 #: measured at 130-221s and `wait_instances` allows 900s, so anything inside
@@ -37,18 +46,41 @@ DEFAULT_GRACE_SECONDS = 3600
 
 #: Grace for a cluster stuck in AUTOSTOPPING. Much shorter, because the
 #: situation is the opposite of the one above: the job ended, autostop fired on
-#: schedule, and the teardown then failed. Nothing is pending and nothing else
-#: will ever collect it -- on Lyceum the node CANNOT self-terminate, since the
-#: skylet never calls `plugins.load_plugins()` and so has no registered
-#: provisioner for an out-of-tree cloud. Ten minutes is enough to let a
-#: genuinely-in-flight teardown finish; waiting the full hour is pure burn, and
-#: at b300x8 that hour is $63.92.
+#: schedule, and the teardown then failed. Nothing is pending.
+#:
+#: Node-side autodown now WORKS (see `node_autodown.py`, verified live
+#: 2026-08-07), so reaching this state means that mechanism failed -- and every
+#: way it can fail is silent: a `.pth` error is swallowed by `site.py`, and the
+#: skylet swallows exceptions and retries every 60s. So this rule is not
+#: obsolete now that autodown works; it is precisely the net beneath it.
+#:
+#: Ten minutes is enough to let a genuinely-in-flight teardown finish (the live
+#: run completed in under three); waiting the full hour is pure burn, and at
+#: b300x8 that hour is $63.92.
 STUCK_GRACE_SECONDS = 600
 
 #: SkyPilot builds `cluster_name_on_cloud` as `<name>-<8 hex user hash>`. Only
 #: names of that shape are candidates: anything else is a VM someone created by
 #: hand in the Lyceum dashboard, which is none of this tool's business.
 _SKYPILOT_NAME_RE = re.compile(r'^.+-[0-9a-f]{8}$')
+
+
+#: Refuse to act when candidates look like a fleet rather than a leak. Losing
+#: our own records makes EVERY live VM look abandoned at once, and that reading
+#: is far more likely than many machines being genuinely orphaned at the same
+#: moment. Below the floor the absolute number is small enough to be real; above
+#: it, a third of the fleet turning up as candidates is a bug in us.
+BREAKER_FLOOR = 2
+BREAKER_FRACTION = 1.0 / 3.0
+
+
+class FleetAnomalyError(RuntimeError):
+    """Too many candidates at once, so we refuse and ask for a human.
+
+    Distinct from `UnknownClusterStateError`: there we know we cannot see the
+    fleet, here we can see it and what we see does not look like a leak. Both
+    end the same way -- nothing is deleted.
+    """
 
 
 class UnknownClusterStateError(RuntimeError):
@@ -69,6 +101,8 @@ class ReapResult:
     would_terminate: List[str] = dataclasses.field(default_factory=list)
     terminated: List[str] = dataclasses.field(default_factory=list)
     failed: List[Any] = dataclasses.field(default_factory=list)
+    #: Candidates dropped at the last moment because a relaunch adopted them.
+    skipped_now_known: List[str] = dataclasses.field(default_factory=list)
     dry_run: bool = True
 
 
@@ -123,12 +157,20 @@ def select_orphans(vms: Iterable['api.VM'], known_names: Optional[Set[str]],
             'unknown set would make every live VM look abandoned and delete '
             'the whole fleet. Fix the cluster-state read and retry.')
 
+    ours = intent.recorded()
     orphans = []
     for vm in vms:
         if vm.is_terminal:
             continue                      # already dead, bills nothing (C4)
+        if vm.display_name not in ours:
+            # We hold no receipt for this VM, so it is not ours to delete: a
+            # colleague's, another SkyPilot install's sharing the org key, or
+            # one made by hand. The name shape cannot distinguish those -- see
+            # `intent.py`. An empty ledger therefore selects nothing, which is
+            # the safe direction when a volume has been recreated.
+            continue
         if not looks_like_a_skypilot_cluster(vm.display_name):
-            continue                      # someone's hand-made VM
+            continue                      # belt and braces; the receipt leads
         is_stuck = vm.display_name in (stuck_names or frozenset())
         if vm.display_name in known_names and not is_stuck:
             continue                      # live cluster -- real work
@@ -158,7 +200,9 @@ def describe(vms: Sequence['api.VM'], now: float) -> List[str]:
 def reap(client, known_names: Optional[Set[str]], now: float,
          grace_seconds: int = DEFAULT_GRACE_SECONDS,
          dry_run: bool = True,
-         stuck_names: Optional[Set[str]] = None) -> ReapResult:
+         stuck_names: Optional[Set[str]] = None,
+         recheck_known=None,
+         heartbeat_path=None) -> ReapResult:
     """Find and (optionally) terminate orphaned Lyceum VMs.
 
     Dry run by DEFAULT: destroying GPUs is opt-in, so a misconfigured cron, a
@@ -172,15 +216,91 @@ def reap(client, known_names: Optional[Set[str]], now: float,
     vms = client.list_vms(include_terminated=False)
     orphans = select_orphans(vms, known_names, now, grace_seconds,
                              stuck_names=stuck_names)
+
+    # Breaker BEFORE the dry-run return: a dry run reporting forty candidates
+    # has found a bug, not forty orphans, and rendering that as an ordinary
+    # result is how people learn to scroll past it.
+    limit = max(BREAKER_FLOOR, int(len(vms) * BREAKER_FRACTION))
+    if len(orphans) > limit:
+        raise FleetAnomalyError(
+            f'refusing to act: {len(orphans)} of {len(vms)} live VMs look '
+            f'orphaned (limit {limit}). That pattern means this control plane '
+            'lost its own records far more often than it means the fleet was '
+            'abandoned. Nothing was terminated. Candidates: '
+            f'{sorted(vm.display_name for vm in orphans)}')
+
     result = ReapResult(scanned=len(vms),
                         would_terminate=[vm.vm_id for vm in orphans],
                         dry_run=dry_run)
     if dry_run:
+        _stamp(heartbeat_path, now)
         return result
+
+    # Re-read the live set immediately before deleting. `run_instances` adopts
+    # an existing VM with a matching name by design, so a relaunch between
+    # selection and deletion would otherwise have its node deleted out from
+    # under it -- and the grace window cannot help, because an adopted VM is
+    # old by construction.
+    if recheck_known is not None:
+        try:
+            fresh = recheck_known()
+        except Exception:  # noqa: BLE001
+            raise UnknownClusterStateError(
+                'could not re-read the cluster set before terminating; '
+                'refusing rather than acting on a stale view') from None
+        if fresh is None:
+            raise UnknownClusterStateError(
+                'cluster set unavailable on re-read; nothing terminated')
+        still = []
+        for vm in orphans:
+            if vm.display_name in fresh:
+                result.skipped_now_known.append(vm.display_name)
+            else:
+                still.append(vm)
+        orphans = still
+
     for vm in orphans:
         try:
             client.terminate_vm(vm.vm_id)
             result.terminated.append(vm.vm_id)
         except Exception as e:  # noqa: BLE001 - one failure must not strand the rest
             result.failed.append((vm.vm_id, str(e)))
+    _stamp(heartbeat_path, now)
     return result
+
+
+def stamp_heartbeat(path, now: Optional[float] = None) -> None:
+    """Record that a reaping pass completed without refusing.
+
+    The reaper's designed failure is to refuse, which is correct -- and until
+    now it refused into a log line nobody reads, every thirty minutes,
+    indefinitely. A file whose mtime stops advancing is something a check can
+    see. Only a COMPLETED pass stamps it; every refusal path leaves it stale.
+    """
+    if path is None:
+        return
+    path = pathlib.Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    stamp = time.time() if now is None else now
+    path.write_text(f'{stamp:.0f}\n', encoding='utf-8')
+
+
+def _stamp(path, now) -> None:
+    try:
+        stamp_heartbeat(path, now)
+    except OSError as exc:      # evidence is a nicety; never break the reaper
+        logger.warning('could not write reaper heartbeat (%s)', exc)
+
+
+def heartbeat_age_seconds(path, now: Optional[float] = None) -> Optional[float]:
+    """Seconds since the last completed pass, or None if there has never been
+    one. None is the loudest case, not the quietest: it means this reaper has
+    not finished a single pass."""
+    try:
+        raw = pathlib.Path(path).read_text(encoding='utf-8').strip()
+    except OSError:
+        return None
+    try:
+        return (time.time() if now is None else now) - float(raw)
+    except ValueError:
+        return None
