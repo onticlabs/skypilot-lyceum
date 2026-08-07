@@ -192,6 +192,27 @@ def test_install_writes_a_pth_that_python_will_execute(monkeypatch, tmp_path):
     assert '.pth' in cmd
 
 
+def test_two_wheels_is_an_error_not_a_coin_flip(monkeypatch, tmp_path):
+    """A lexicographic 'latest' picks 0.9.0 over 0.10.0. Since the image builds
+    exactly one wheel, more than one means the build changed in a way nothing
+    here can adjudicate -- so refuse rather than ship an arbitrary plugin."""
+    monkeypatch.setenv(node_autodown.WHEEL_DIR_ENV, str(tmp_path))
+    (tmp_path / 'skypilot_lyceum-0.9.0-py3-none-any.whl').write_bytes(b'')
+    assert node_autodown.find_wheel().name.endswith('0.9.0-py3-none-any.whl')
+    (tmp_path / 'skypilot_lyceum-0.10.0-py3-none-any.whl').write_bytes(b'')
+    with pytest.raises(RuntimeError, match='expected exactly one'):
+        node_autodown.find_wheel()
+
+
+def test_skylet_detection_matches_upstream_containment(monkeypatch):
+    """Upstream tests `'sky.skylet.skylet' in arg`. If SkyPilot ever glues the
+    args into one element, `endswith` stops matching while upstream still finds
+    its skylet -- we would silently stop registering."""
+    monkeypatch.setattr(node_autodown, '_process_cmdline',
+                        lambda: ['python -m sky.skylet.skylet --port=1234'])
+    assert node_autodown._inside_skylet()
+
+
 def test_install_command_cannot_contain_a_yaml_mapping_indicator(monkeypatch,
                                                                  tmp_path):
     """The setup block is a plain YAML scalar, so a `": "` in the command turns
@@ -205,6 +226,11 @@ def test_install_command_cannot_contain_a_yaml_mapping_indicator(monkeypatch,
     cmd = node_autodown.template_variables()['lyceum_node_setup_command']
     assert ': ' not in cmd, f'plain-scalar-breaking ": " in: {cmd}'
     assert ': ' not in node_autodown.PTH_LINE
+    # ' #' is the WORSE trap: it does not fail to parse, it silently truncates
+    # the command at that point. The launch then succeeds with autodown quietly
+    # missing -- indistinguishable from the bug this whole module fixes.
+    assert ' #' not in cmd, f'comment indicator truncates the command: {cmd}'
+    assert ' #' not in node_autodown.PTH_LINE
 
 
 def test_install_failure_does_not_fail_the_launch(monkeypatch, tmp_path):

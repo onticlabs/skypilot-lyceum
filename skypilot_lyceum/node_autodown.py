@@ -70,7 +70,17 @@ def find_wheel() -> Optional[pathlib.Path]:
     if not directory.is_dir():
         return None
     wheels = sorted(directory.glob('skypilot_lyceum-*.whl'))
-    return wheels[-1] if wheels else None
+    if not wheels:
+        return None
+    if len(wheels) > 1:
+        # The image builds exactly one. More than one means the build changed
+        # and nothing here can say which is intended -- a lexicographic "latest"
+        # would pick 0.9.0 over 0.10.0 and ship the wrong plugin to every node.
+        raise RuntimeError(
+            f'{directory} holds {len(wheels)} skypilot_lyceum wheels '
+            f'({[w.name for w in wheels]}); expected exactly one, so the node '
+            'would get an arbitrary build. Fix the image.')
+    return wheels[0]
 
 
 def template_variables() -> Dict[str, object]:
@@ -143,10 +153,16 @@ def _inside_skylet() -> bool:
     the process whose command line names `sky.skylet.skylet`. Matching it means
     we cannot drift from what SkyPilot considers the skylet.
 
+    Containment, not `endswith`, because that is what upstream does. The two
+    agree on today's launch line, but they diverge the moment SkyPilot glues
+    arguments into one argv element or launches by script path -- upstream would
+    still find its skylet and we would silently stop registering, which is the
+    exact drift this is supposed to be immune to.
+
     `attempt_skylet` -- the launcher -- deliberately does NOT match: it exits
     immediately after starting the real skylet, so registering there is waste.
     """
-    return any(arg.endswith('sky.skylet.skylet') for arg in _process_cmdline())
+    return any('sky.skylet.skylet' in arg for arg in _process_cmdline())
 
 
 def _register() -> None:
