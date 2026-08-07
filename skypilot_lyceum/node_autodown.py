@@ -62,9 +62,15 @@ _MARKER = pathlib.Path('~/.sky/lyceum-node-bootstrap').expanduser()
 def find_wheel() -> Optional[pathlib.Path]:
     """The wheel to install on the node, or None if this server has none.
 
-    None is a supported state, not an error: it degrades to the behaviour we
-    already have (no node-side autodown, teardown left to the reaper). Making it
-    fatal would turn a missing build artifact into an inability to launch.
+    None means this server ships no node autodown at all, which is a build
+    configuration rather than a runtime failure -- a laptop, or an image built
+    without the wheel step. It renders no mount and no setup command, so nothing
+    is installed and nothing is verified.
+
+    Note the asymmetry with `_install_command`: NOT shipping autodown is a
+    deployment choice, while shipping it and having it not work is a defect, and
+    only the second fails a launch. The API server's Dockerfile asserts the
+    wheel is present, so on the control plane this cannot silently be None.
     """
     directory = pathlib.Path(os.environ.get(WHEEL_DIR_ENV, _DEFAULT_WHEEL_DIR))
     if not directory.is_dir():
@@ -100,38 +106,66 @@ def template_variables() -> Dict[str, object]:
 
 
 def _install_command(remote_wheel: str) -> str:
-    """Install the wheel into SkyPilot's runtime env and arm the .pth.
+    """Install the plugin into SkyPilot's runtime env, arm the .pth, and PROVE it.
 
-    `--no-deps` is deliberate. Our declared dependencies are `requests`,
-    `pandas` and `skypilot` itself; the first two are already SkyPilot
-    dependencies and therefore present, and resolving them again could upgrade
-    versions SkyPilot pinned inside its own runtime. Installing `skypilot` from
-    PyPI over the runtime's own install would be worse still.
+    Fails the setup step, and so the whole launch, if any of that does not work.
+    That is the deliberate trade: a node that cannot delete itself is worse than
+    a launch that did not happen. Lyceum has no stop and no cloud-side TTL, so
+    such a node bills from `ready` until a human notices -- unbounded in time,
+    up to $63.92/h. A failed launch costs one retry.
 
-    Contains no `": "` anywhere, and must not. The setup block is a plain YAML
-    scalar, where a colon-followed-by-space starts a mapping and makes the whole
-    cluster config unparseable -- for every launch, not just Lyceum ones. That
-    is what broke the first attempt at this; `test_node_autodown.py` now pins it.
+    The last step is the point of the whole thing. `pip install` exiting 0 says a
+    file was copied; it does not say the skylet will be able to resolve the cloud
+    when it tries to tear this node down half a day later. So we run the exact
+    registration the skylet's autodown path depends on, in the exact interpreter
+    that will run it, and require the two lookups `StopEvent._stop_cluster` makes
+    to succeed. Verifying the capability rather than the artifact is what makes
+    "loud" mean anything.
 
-    The whole thing ends in `|| true`: a node that cannot install the plugin
-    must still run its job. Failing the setup step would trade a cost bug for an
-    outage. The failure is not silent -- it prints, and `_MARKER` on the node
-    records that the bootstrap never ran.
+    `--no-deps` is deliberate. Our declared dependencies are `requests`, `pandas`
+    and `skypilot` itself; the first two are already SkyPilot dependencies and so
+    present, and resolving them again could upgrade versions SkyPilot pinned
+    inside its own runtime. Installing `skypilot` over the runtime's own install
+    would be worse still.
+
+    Contains no `": "` and no `" #"`, and must not. The setup block is a plain
+    YAML scalar: a colon-space starts a mapping and makes the whole cluster
+    config unparseable, and a mid-line hash silently TRUNCATES the command --
+    the second is worse, because the launch then succeeds with autodown quietly
+    missing. `test_node_autodown.py` pins both.
     """
     # Same python discovery SkyPilot uses for its own remote commands
-    # (`skylet.constants.SKY_PYTHON_CMD`), so we install into the interpreter
-    # that will actually run the skylet rather than whatever `python3` resolves
-    # to on the vendor image.
+    # (`skylet.constants.SKY_PYTHON_CMD`), so we install into, and verify
+    # against, the interpreter that will actually run the skylet.
     py = ('$([ -s ${SKY_RUNTIME_DIR:-$HOME}/.sky/python_path ] && '
           'cat ${SKY_RUNTIME_DIR:-$HOME}/.sky/python_path 2> /dev/null || '
           'which python3)')
     pth = shlex.quote(PTH_LINE)
+    verify = shlex.quote(VERIFY_SNIPPET)
     return (
-        f'({py} -m pip install --no-deps --quiet {remote_wheel} && '
+        f'{py} -m pip install --no-deps --quiet {remote_wheel} && '
         f'SP=$({py} -c "import site; print(site.getsitepackages()[0])") && '
-        f'echo {pth} > "$SP/{PTH_NAME}") '
-        f'|| echo "WARNING - lyceum node autodown NOT installed, this node '
-        f'cannot delete itself" >&2 || true;')
+        f'echo {pth} > "$SP/{PTH_NAME}" && '
+        f'{py} -c {verify};')
+
+
+#: Run on the node at setup time, in the runtime interpreter, to prove autodown
+#: will work. Mirrors what `StopEvent._stop_cluster` does: register, then resolve
+#: the cloud and the provisioner. A failure here fails the launch.
+VERIFY_SNIPPET = (
+    'import os, site; '
+    'from skypilot_lyceum import node_autodown; '
+    'node_autodown._register(); '
+    'from sky.utils import registry; '
+    'import sky.provision as p; '
+    'assert registry.CLOUD_REGISTRY.from_str("lyceum") is not None, '
+    '"lyceum did not register in the node runtime"; '
+    'assert p.get_registered_provisioner("lyceum") is not None, '
+    '"no lyceum provisioner in the node runtime"; '
+    'assert os.path.exists(os.path.join(site.getsitepackages()[0], '
+    f'"{PTH_NAME}")), "pth missing"; '
+    'print("lyceum node autodown verified")'
+)
 
 
 # --------------------------------------------------------------------------

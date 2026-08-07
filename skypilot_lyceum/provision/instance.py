@@ -232,8 +232,8 @@ def _stop_the_meter(client: 'api.LyceumClient', cluster_name_on_cloud: str,
         except Exception as exc:  # pylint: disable=broad-except
             logger.error(f'FAILED to terminate {vm_id} after a failed create '
                          f'for {cluster_name_on_cloud!r}: {exc}. This VM is '
-                         'billing with nothing referencing it; the orphan '
-                         'reaper is now the only thing that will stop it.')
+                         'billing with nothing referencing it, and Lyceum has '
+                         'no TTL to end it. Terminate it by hand.')
 
 
 # ---------------------------------------------------------------------------
@@ -424,7 +424,7 @@ def terminate_instances(cluster_name_on_cloud: str,
         try:
             client.terminate_vm(vm.vm_id)
         except api.LyceumNotFoundError:
-            # Already gone: `sky down` races the reaper and autodown by design.
+            # Already gone: `sky down` races node-side autodown by design.
             logger.debug(f'VM {vm.vm_id} of {cluster_name_on_cloud!r} was '
                          'already gone.')
         except Exception as exc:  # pylint: disable=broad-except
