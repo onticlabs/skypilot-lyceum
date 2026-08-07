@@ -85,6 +85,15 @@ _BACKEND_SUPPLIED_TEMPLATE_VARS = frozenset({
     'ssh_max_sessions_config',
 })
 
+#: Supplied by `provision.template_override` via `TemplateSpec.variables`, not
+#: by `make_deploy_resources_variables`. They describe the SERVER's filesystem
+#: (where the node-autodown wheel lives), which is not a function of the
+#: Resources being provisioned -- so they must not leak into that method.
+_PROVISIONER_SUPPLIED_TEMPLATE_VARS = frozenset({
+    'lyceum_file_mounts',
+    'lyceum_node_setup_command',
+})
+
 
 # --------------------------------------------------------------------------
 # Local fixtures
@@ -293,6 +302,11 @@ def test_lyceum_uses_the_skypilot_provisioner_and_status_paths(lyceum):
 _EXPECTED_UNSUPPORTED = frozenset({
     'MULTI_NODE',
     'STOP',
+    # Lyceum can only DELETE, so an idle timer can only ever mean autodown.
+    # Without this, `sky launch -i N` (no --down) validates and then asks the
+    # node to stop forever while the VM bills -- STOP does not cover it, because
+    # that gate guards `sky autostop`, not the launch flag.
+    'AUTOSTOP',
     'SPOT_INSTANCE',
     'CUSTOM_DISK_TIER',
     'DOCKER_IMAGE',
@@ -347,18 +361,37 @@ def test_lyceum_declares_exactly_the_designed_envelope(lyceum):
     assert declared == set(_EXPECTED_UNSUPPORTED)
 
 
-def test_lyceum_envelope_matches_shadeform(lyceum):
-    """Prevents Lyceum and Shadeform disagreeing about what a GPU VM can do.
+#: Features Lyceum refuses that Shadeform allows. Every entry needs a reason
+#: rooted in the Lyceum API, not in convenience.
+_LYCEUM_ONLY_UNSUPPORTED = frozenset({
+    # Shadeform can stop an instance, so an idle timer there can mean "pause".
+    # Lyceum has DELETE and nothing else, so the same flag would ask the node to
+    # do something impossible -- silently, on a retry loop, while it bills.
+    'AUTOSTOP',
+})
 
-    The two clouds are co-equal failover targets; if their envelopes
-    differ, `infra: "*"` produces plans that are feasible on one and rejected on
-    the other, and the failure only shows up mid-failover.
+
+def test_lyceum_envelope_is_at_least_as_strict_as_shadeform(lyceum):
+    """Prevents Lyceum CLAIMING a capability Shadeform has and it does not.
+
+    The two clouds are co-equal failover targets, so a plan feasible on one and
+    rejected on the other only surfaces mid-failover. The asymmetry that hurts is
+    Lyceum declaring FEWER restrictions than Shadeform: the optimizer would then
+    route work to Lyceum that its API cannot perform. Declaring MORE is safe --
+    the optimizer simply prefers Shadeform for those jobs.
+
+    So this is a subset assertion, plus an explicit inventory of the difference:
+    a new divergence has to be justified in `_LYCEUM_ONLY_UNSUPPORTED` rather
+    than appearing by accident.
     """
     ours = {f.name for f in lyceum._CLOUD_UNSUPPORTED_FEATURES}
     theirs = {
         f.name for f in shadeform_cloud.Shadeform._CLOUD_UNSUPPORTED_FEATURES
     }
-    assert ours == theirs
+    assert theirs <= ours, (
+        f'Lyceum claims {sorted(theirs - ours)} which Shadeform refuses -- '
+        'the optimizer would route work to an API that cannot do it')
+    assert ours - theirs == _LYCEUM_ONLY_UNSUPPORTED
 
 
 def test_shadeform_still_triages_every_upstream_feature(lyceum):
@@ -380,10 +413,16 @@ def test_shadeform_still_triages_every_upstream_feature(lyceum):
     Shadeform is our reference triage, and the bump is what we want to catch.
     Lyceum's own coverage is `test_lyceum_declares_exactly_the_designed_envelope`.
 
-    The four members deliberately left undeclared by both:
+    The three members deliberately left undeclared by both:
       OPEN_PORTS     -- handled via OPEN_PORTS_VERSION, not this dict.
-      AUTOSTOP/AUTODOWN/AUTO_TERMINATE -- SkyPilot-side skylet behaviour, not a
-      cloud API capability (and the envelope assumes autodown works).
+      AUTODOWN/AUTO_TERMINATE -- SkyPilot-side skylet behaviour, not a cloud API
+      capability. AUTODOWN is what we WANT to work, and node-side autodown is
+      what makes it work (see `skypilot_lyceum/node_autodown.py`).
+
+    AUTOSTOP used to be on that list, on the reasoning that an idle timer is
+    skylet behaviour rather than a cloud capability. That was wrong in a way
+    that cost money: the timer is skylet-side, but what it ASKS the cloud to do
+    at the end is not, and Lyceum cannot stop anything. Lyceum now declares it.
     """
     ours = {f.name for f in lyceum._CLOUD_UNSUPPORTED_FEATURES}
     theirs = {
@@ -391,12 +430,10 @@ def test_shadeform_still_triages_every_upstream_feature(lyceum):
     }
     unclassified = {f.name for f in clouds.CloudImplementationFeatures
                    } - ours - theirs
-    assert unclassified == {
-        'OPEN_PORTS', 'AUTO_TERMINATE', 'AUTOSTOP', 'AUTODOWN'
-    }, ('skypilot has a CloudImplementationFeatures member that neither Lyceum '
-        'nor Shadeform has triaged: '
-        f'{sorted(unclassified - {"OPEN_PORTS", "AUTO_TERMINATE", "AUTOSTOP", "AUTODOWN"})}'
-       )
+    expected = {'OPEN_PORTS', 'AUTO_TERMINATE', 'AUTODOWN'}
+    assert unclassified == expected, (
+        'skypilot has a CloudImplementationFeatures member that neither Lyceum '
+        f'nor Shadeform has triaged: {sorted(unclassified - expected)}')
 
 
 def test_stop_is_unsupported_because_the_api_only_terminates(lyceum):
@@ -528,7 +565,8 @@ def test_make_deploy_resources_variables_supplies_every_template_variable(
     cluster YAML that is structurally valid and semantically wrong.
     """
     referenced = _template_variables()
-    required = referenced - _BACKEND_SUPPLIED_TEMPLATE_VARS
+    required = (referenced - _BACKEND_SUPPLIED_TEMPLATE_VARS
+                - _PROVISIONER_SUPPLIED_TEMPLATE_VARS)
 
     resources = Resources(cloud=Lyceum(),
                           instance_type='h100.8x',

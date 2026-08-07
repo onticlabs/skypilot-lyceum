@@ -120,12 +120,26 @@ def test_template_override_points_at_the_packaged_template(enabled):
 
 
 def test_template_override_declares_the_provider_module(enabled):
-    """The rendered config's `provider.module` must name OUR package.
+    r"""The rendered config's `provider.module` must name OUR package.
 
-    The template writes `module: skypilot_lyceum.provision`, which is what
-    SkyPilot's external-provider path imports to reach our `run_instances`.
-    Pointing at `sky.provision.shadeform` (an easy copy-paste) would provision
-    the wrong cloud entirely.
+    The template writes `module: sky.provision.lyceum`. That string is NEVER
+    imported -- verified across SkyPilot 0.13.0, where `provider.module` is read
+    in exactly three places, all string operations: `cluster_utils.get_provider_name`
+    (a regex) and two `backend_utils` sites that substring-check it for
+    'kubernetes'. It is a NAME source, not an import target; dispatch reaches
+    `run_instances` through the provisioner REGISTRY.
+
+    Which is why the spelling has to be `sky.provision.<name>`: that regex is
+    `(?:providers|provision)\.(\w+)\.?`, and the natural spelling --
+    `skypilot_lyceum.provision`, this package's real module path -- does not
+    match it. The skylet then asserts and dies before reaching any Lyceum code,
+    silently, taking node-side autodown with it. See `test_node_autodown.py`.
+
+    No `sys.modules` alias is needed or wanted; adding one would imply the name
+    is imported somewhere, which it is not.
+
+    Pointing at `sky.provision.shadeform` (an easy copy-paste) would name the
+    wrong cloud entirely, and dispatch would then reach Shadeform's provisioner.
     """
     spec = lyceum_provision.template_override(
         object(), object(), _extra_launch_context=None,
@@ -137,5 +151,5 @@ def test_template_override_declares_the_provider_module(enabled):
     # this was adapted from -- pinning prose rather than behaviour, which is
     # the over-fitting this suite's review flagged elsewhere.
     modules = re.findall(r'^\s*module:\s*(\S+)\s*$', text, re.MULTILINE)
-    assert modules == ['skypilot_lyceum.provision'], (
-        f'provider.module must name our package exactly once, got {modules}')
+    assert modules == ['sky.provision.lyceum'], (
+        f'provider.module must name our cloud exactly once, got {modules}')

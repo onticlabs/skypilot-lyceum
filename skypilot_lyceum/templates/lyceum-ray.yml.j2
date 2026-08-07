@@ -22,7 +22,14 @@ idle_timeout_minutes: 60
 
 provider:
   type: external
-  module: skypilot_lyceum.provision
+  # MUST be spelled `sky.provision.<name>`. The skylet parses the cloud's name
+  # back out of this string with `cluster_utils.get_provider_name`, whose regex
+  # `(?:providers|provision)\.(\w+)\.?` only matches that form. The obvious
+  # spelling -- this package's real module path -- does not match, and the
+  # skylet then dies on an assertion before reaching any Lyceum code, silently,
+  # taking node-side autodown with it. The name is what is load-bearing here,
+  # not the import path: dispatch goes through the provisioner REGISTRY.
+  module: sky.provision.lyceum
   region: "{{region}}"
   disable_launch_config_check: true
 
@@ -54,6 +61,9 @@ file_mounts: {
 {%- for remote_path, local_path in credentials.items() %}
   "{{remote_path}}": "{{local_path}}",
 {%- endfor %}
+{%- for remote_path, local_path in lyceum_file_mounts.items() %}
+  "{{remote_path}}": "{{local_path}}",
+{%- endfor %}
 }
 
 rsync_exclude: []
@@ -74,3 +84,7 @@ setup_commands:
     sudo grep -e '^DefaultTasksMax' /etc/systemd/system.conf || (sudo bash -c 'echo "DefaultTasksMax=infinity" >> /etc/systemd/system.conf'); sudo systemctl set-property user-$(id -u $(whoami)).slice TasksMax=infinity; sudo systemctl daemon-reload;
     (grep -Pzo -q "Host \*\n  StrictHostKeyChecking no" ~/.ssh/config) || printf "Host *\n  StrictHostKeyChecking no\n" >> ~/.ssh/config;
     {{ ssh_max_sessions_config }}
+    {# Node-side autodown. Placed AFTER ray_skypilot_installation_commands
+       because it installs into the runtime env that those commands create.
+       Renders to nothing when the server has no wheel to ship. #}
+    {{ lyceum_node_setup_command }}
