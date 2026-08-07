@@ -129,7 +129,7 @@ class VM:
         """Dead beyond recovery.
 
         An UNRECOGNISED status is deliberately NOT terminal. The costs are
-        asymmetric: believing a live VM is dead makes the reaper skip it and
+        asymmetric: believing a live VM is dead hides it from teardown and
         the provisioner launch a duplicate -- two machines billing at up to
         $63.92/h -- while believing a dead VM is alive costs one failed SSH.
         """
@@ -377,7 +377,7 @@ class LyceumClient:
         """The resolved credential.
 
         An explicit constructor argument always wins over ambient environment:
-        the reaper and the provisioner may share a process with other
+        autodown and the provisioner may share a process with other
         credentials, and picking up the wrong one deletes VMs in whichever org
         the env var happens to name.
         """
@@ -527,13 +527,13 @@ class LyceumClient:
         retryable. See `_request`.
 
         Idempotency covers 404 only. A 401 means we deleted nothing and must
-        say so, or the reaper reports a clean sweep it never made.
+        say so, or a caller reports a clean sweep it never made.
         """
         try:
             self._request('DELETE', f'/vms/{vm_id}', capacity_500=False)
         except LyceumNotFoundError:
             # Already gone is the outcome we wanted: teardown is retried and
-            # races the reaper.
+            # races node-side autodown.
             return None
         return None
 

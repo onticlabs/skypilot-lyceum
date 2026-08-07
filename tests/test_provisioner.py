@@ -428,7 +428,7 @@ def test_run_instances_adopts_an_existing_live_vm(monkeypatch, vm):
     SkyPilot calls run_instances again for the same cluster during failover
     and after a transient error. Creating a second VM leaves the first one
     running and unreferenced -- a second GPU on the meter until the orphan
-    reaper notices.
+    a human notices.
     """
     live = vm('vm_status_ready_bare_ip', display_name=CLUSTER_ON_CLOUD)
     fake = FakeLyceumClient([live])
@@ -488,7 +488,7 @@ def test_run_instances_adopts_a_vm_that_is_still_provisioning(
     adoption is gated on `VM.is_usable` -- ready AND a non-null IP -- the
     still-provisioning VM looks like "nothing here", a second create fires, and
     the first VM keeps billing with nothing referencing it. Per C5 there is no
-    cloud-side TTL, so nothing but the reaper ever notices; at b300 x8 that is
+    cloud-side TTL, so nothing but autodown ever notices; at b300 x8 that is
     $63.92/h.
 
     Every other adoption test in this file uses a VM that is already `ready`,
@@ -542,7 +542,7 @@ def test_run_instances_never_strands_a_vm_it_created(monkeypatch, failure):
     one edit away from turning this into a permanent leak. Even on the happy
     path, teardown goes through the same API that just failed and gives up
     after three retries with StopFailoverError. Per C5 there is no cloud-side
-    TTL, so a stranded b300 x8 bills $63.92/h until the reaper finds it. The
+    TTL, so a stranded b300 x8 bills $63.92/h until autodown finds it. The
     cheapest place to stop the meter is the function that started it, while it
     still holds the handle. So: clean up, and also do not raise a type that
     disables SkyPilot's own second line of defence.
@@ -572,7 +572,7 @@ def test_run_instances_never_strands_a_vm_it_created(monkeypatch, failure):
     for call in fake.create_calls:
         assert call['display_name'] == CLUSTER_ON_CLOUD, (
             'the created VM carries no recoverable name, so neither teardown '
-            'nor the reaper can ever find it')
+            'nor autodown can ever find it')
 
     unaccounted = set(fake.committed_vm_ids)
     if record is not None:
@@ -595,7 +595,7 @@ def test_run_instances_names_the_created_vm_after_the_cluster(monkeypatch):
     Lyceum has no tags and no server-side filtering, so a VM created under any
     other name is unreachable by every later
     operation: it can never be adopted, queried, or terminated, and only the
-    orphan reaper would ever find it.
+    node-side autodown would ever find it.
     """
     fake = FakeLyceumClient([])
     _patch_lyceum_client(monkeypatch, fake)
@@ -977,7 +977,7 @@ def test_stop_instances_raises_and_terminates_nothing(monkeypatch, mixed_vms):
 
 
 def test_terminate_instances_terminates_every_live_vm(monkeypatch, vm):
-    """A VM left behind bills until the reaper catches it -- up to $63.92/h.
+    """A VM left behind bills until autodown catches it -- up to $63.92/h.
 
     There is no cloud-side TTL (C5), so an explicit DELETE is the only thing
     that stops the meter.
@@ -1045,7 +1045,7 @@ def test_terminate_instances_is_idempotent_when_nothing_is_live(monkeypatch):
 def test_terminate_instances_swallows_not_found(monkeypatch, vm, fixture):
     """Already gone is success; a raised 404 aborts teardown mid-cluster.
 
-    Two callers can race on `sky down`, and the reaper races with autodown by
+    Two callers can race on `sky down`, and autodown races with autodown by
     design. Propagating the 404 leaves any remaining VM un-terminated.
     """
     detail = fixture('error_404_vm_not_found')['detail']

@@ -41,7 +41,7 @@ is what this package implements.
   status, terminate, cluster info, and the port no-ops.
 * Ships its own Ray cluster-config Jinja template and wires it in through
   SkyPilot's `template_override` hook.
-* Provides an **orphan reaper** (see below), which on this cloud is the
+* Makes **node-side autodown work** (see below), which on this cloud is the
   authoritative teardown mechanism rather than a safety net.
 
 Instance types are named `{profile}.{count}x` — `h100.8x`, `l40s.1x`, etc. —
@@ -119,40 +119,37 @@ Lyceum cloud class, and delegates everything else to the original.
 fix would be a `Cloud`-level hook, or an `isinstance` fallthrough that calls
 `configure_ssh_info` instead of asserting.
 
-### (c) The skylet never loads plugins, so node-side autostop/autodown cannot work — *unfixable downstream*
-
-This is the expensive one.
+### (c) The skylet has no plugin hook — *worked around, not fixed*
 
 SkyPilot's autodown runs **on the node**. The skylet's autostop event calls
 `sky.provision.terminate_instances('lyceum', …)` locally, which requires your
-provisioner to be *registered in the skylet's process*. Registration only
+provisioner to be *registered in the skylet's process*. Registration normally
 happens through `plugins.load_plugins()` — and the skylet never calls it. Not
 once, anywhere in the tree.
 
-Installing this package on the node is therefore **not enough**. There is no
-hook at all. Consequently, for any out-of-tree cloud:
+So installing this package on the node is not enough on its own. It took two
+attempts to get past this. The first shipped the wheel and stopped there, which
+does nothing. The second concluded node-side autodown was impossible for any
+out-of-tree cloud and built an external reaper instead — a conclusion that was
+wrong, because it assumed the plugin loader is the only way to run code in that
+process.
 
-* `sky autostop --down` and any TTL you set will fire on schedule,
-* the cluster will move to `AUTOSTOPPING`,
-* and it will stick there, because the node cannot dispatch the termination.
+A `.pth` file in the runtime's `site-packages` executes at **interpreter
+startup**, with no framework hook required. `skypilot_lyceum/node_autodown.py`
+uses exactly one such line, gated on the process being the skylet, to register
+the cloud and provisioner. Autodown then works as upstream designed it.
 
-Observed consequence before this was understood: a VM billing for 30+ minutes
-after its job had been killed, while the control plane still considered the
-cluster "known" and therefore not an orphan.
+There is a second, unrelated fault in the same path worth knowing about: the
+skylet extracts the cloud's name from `provider.module` with a regex that only
+matches the in-tree `sky.provision.<name>` spelling, so the template must use
+that form even though nothing ever imports it.
 
-On a cloud that *has* a server-side idle timeout this is merely untidy. Lyceum
-has none (see C5 below): the only thing that ever stops a Lyceum VM billing is an
-explicit `DELETE`. That makes an **external reaper the only reliable teardown
-mechanism**, not a backstop — hence `skypilot_lyceum/reaper.py`, and hence the
-reaper's special short grace window for clusters stuck in `AUTOSTOPPING`.
+`tests/test_cloud_class.py::test_the_skylet_still_has_no_plugin_hook_so_the_pth_is_still_needed`
+fails the day upstream grows skylet-side plugin loading, at which point the
+`.pth` can be deleted and this becomes an ordinary `enable()` call.
 
-`tests/test_cloud_class.py::test_the_skylet_never_loads_plugins_so_nodes_cannot_self_terminate`
-scans the installed SkyPilot tree and fails the moment upstream grows
-skylet-side plugin loading, at which point the reaper can be demoted to a
-backstop.
-
-**Verdict:** cannot be fixed downstream. If you are writing an out-of-tree
-provider for a cloud without a TTL, plan for an external reaper from day one.
+**Verdict:** works, via one contained hack. Verified live on 2026-08-07 — a real
+node deleted itself about a minute after going idle, with no server involvement.
 
 ## Lyceum API quirks (C1–C12)
 
@@ -167,7 +164,7 @@ provisioning real GPUs — and each has a fixture-backed regression test. The
 | **C2** | `ip_address` is polymorphic: a bare host (`203.0.113.10`) on some VMs and `host:port` (`198.51.100.20:22`) on others — from the same account, minutes apart. | `api.parse_ip_address` splits host from port once, defaults to 22, treats a bare IPv6 literal as a host, and **raises** on a malformed port rather than guessing. |
 | **C3** | The catalog lives in `/pricing`: rows with `meter_slug == "vm_running"`, keyed by `applies_to.hardware_profile` in the form `{instance_type}.{profile}.{count}x`. `unit_price` is per **second**; `unit_price_per_hour` is a **string**. | Reads `applies_to` first (`group_by` only as fallback) and coerces to plain `float` — a string price compares lexicographically, and `Decimal`/`numpy.float64` break the API server's JSON encoder. |
 | **C4** | `/vms/list` defaults every `include_*` flag to `true`, so the naive call returns terminated and failed VMs — and a terminated VM keeps its `display_name` forever. | Sends `include_terminated=false&include_failed=false` **and** filters client-side; identity lookups exclude terminal VMs and order by `created_at` descending. |
-| **C5** | There is no stop endpoint and **no cloud-side TTL**. A VM bills from `ready` until someone issues `DELETE` — at `b300.8x` that is $63.92/h. | `STOP` declared unsupported; every failure path terminates what it created; the orphan reaper exists. |
+| **C5** | There is no stop endpoint and **no cloud-side TTL**. A VM bills from `ready` until someone issues `DELETE` — at `b300.8x` that is $63.92/h. | `STOP` declared unsupported; `AUTOSTOP` declared unsupported so `sky launch -i N` without `--down` is refused rather than leaking; every failure path terminates what it created; node-side autodown verified working, and its install is verified at setup so a node that cannot delete itself never launches. |
 | **C6** | In the `/vms/create` response, top-level `hardware_profile` and `gpu_count` are `null`; the real values are under `instance_specs`. | `api._parse_vm` reads `instance_specs` first and falls back to the top level. |
 | **C7** | Capacity exhaustion is reported as **HTTP 500**, distinguishable only by the detail text "could not be provisioned". | Mapped to a distinct `LyceumCapacityError` and re-raised as `ResourcesUnavailableError`, so the optimizer fails over instead of backing off against an exhausted SKU. A generic retry-on-5xx client gets this exactly wrong. |
 | **C8** | `gpu_count` must be nested under `instance_specs`; a top-level one is ignored. `gpu_count: 0` is silently coerced to **1** and provisions a real, billing VM. Other invalid counts get an unhelpful 400. | Counts are validated client-side against `(1, 2, 4, 8)` and **rejected, never clamped**; the payload always nests `gpu_count`. |
@@ -299,35 +296,47 @@ extrapolated, not measured.** The `SpecsMeasured` column carries that
 distinction, and a `strict=True` xfail in the test suite turns red the moment
 someone flips the flag — so the reminder cannot rot.
 
-## The orphan reaper
+## Teardown
 
-`skypilot_lyceum/reaper.py` finds Lyceum VMs that are billing but unaccounted
-for and terminates them. Because of gap (c) and C5, on this cloud it is the
-authoritative teardown, not a safety net: an API server that died mid-provision,
-an executor that crashed between create and record, or a cluster DB lost with
-its volume all leave a GPU running with nothing that will ever collect it.
+The node deletes itself. SkyPilot's autodown runs on the node: when the cluster
+goes idle past its threshold, the skylet resolves the cloud and dispatches
+`terminate_instances`. `skypilot_lyceum/node_autodown.py` is what makes that
+work for an out-of-tree cloud — see the section above.
 
-It is destructive automation pointed at production, so it is built to refuse:
+There is deliberately **no server-side reaper**. An earlier version of this
+package shipped one, on the reasoning that C5 (no stop, no cloud-side TTL) made
+an external sweep the authoritative teardown. Two findings retired it:
 
-* **dry run by default** — terminating requires explicitly opting in;
-* a VM belonging to a live cluster is never touched;
-* a VM younger than the grace window (default 1 h) is never touched, since it
-  may still be provisioning;
-* a VM whose `display_name` is not SkyPilot-shaped (`<name>-<8 hex>`) is never
-  touched — a human made it;
-* an **unknown** cluster set raises `UnknownClusterStateError` rather than
-  treating "I don't know" as "nothing is running". That single rule is what
-  stands between a failed cluster-DB read and a deleted fleet mid-training;
-* a failed *listing* aborts the run; a failed *termination* is recorded and the
-  remaining VMs are still attempted.
+* every failure path in `run_instances` and `wait_instances` already terminates
+  what it created, in-process, including the lost-response case;
+* SkyPilot records the cluster **before** provisioning ("Record early, so if
+  anything goes wrong, `sky status` will show the cluster name"), so a process
+  that dies mid-provision leaves a *visible* cluster, not an invisible orphan.
 
-Clusters known to be stuck in `AUTOSTOPPING` are re-opened to collection after a
-much shorter 10-minute grace, because that state means the job ended, teardown
-fired, and nothing else will ever finish it.
+What remained was a node whose plugin install silently failed, which would run
+its job correctly and then be unable to delete itself. That is now caught where
+it originates: the setup step **verifies** that registration works in the node's
+own interpreter, and fails the launch if it does not.
 
-The module exposes `select_orphans`, `describe` and `reap`; it deliberately
-ships no CLI or cron wiring, since scheduling and the source of the "known
-clusters" set belong to whatever operates the control plane.
+Note what that failure does and does not do. SkyPilot's teardown-on-error wraps
+provisioning, not runtime setup, so the VM is left running as a **visible INIT
+cluster** rather than deleted. On the ontic path `launch._reconcile_orphan`
+notices and issues `sky down`; off it, a human must. The gain is turning an
+invisible unbounded leak into a loud, visible, usually self-cleaning one.
+
+### Residual gaps, ranked
+
+1. **A node reboot.** SkyPilot invalidates the autostop config when `boot_time`
+   changes and nothing ever re-arms it, so the cluster shows `UP` and bills
+   silently. This is the worst of the three because it is the only one that is
+   silent again.
+2. **A launch that fails outside the ontic client** (raw `sky launch`, or the
+   client dying while the server's `retry_until_up` loop later succeeds): a
+   visible cluster billing until someone acts.
+3. **A skylet that dies outright** never fires autostop at all; visible as `UP`.
+
+All three are surfaced by `ontic cluster list` and `ontic cost`. None is
+collected automatically.
 
 ## Status and maturity
 
@@ -394,7 +403,7 @@ The test suite is organised by seam — `test_api_client.py` (HTTP and the C1–
 quirks), `test_catalog.py`, `test_cloud_class.py`, `test_provisioner.py`,
 `test_registration.py` (the patches), `test_signature_conformance.py` (static
 checks against SkyPilot's dispatcher), `test_template_override.py`,
-`test_plugin.py`, `test_reaper.py`. Docstrings state the concrete production
+`test_plugin.py`, `test_node_autodown.py`. Docstrings state the concrete production
 failure each test prevents; they are the real documentation for this package.
 
 ## License

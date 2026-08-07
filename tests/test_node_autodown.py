@@ -156,8 +156,10 @@ def test_register_makes_the_stop_path_resolvable(lyceum_enabled):
 # Getting this package onto the node
 # --------------------------------------------------------------------------
 def test_no_wheel_means_no_mounts_and_no_setup(monkeypatch):
-    """Degrade cleanly. A server built without the wheel still launches jobs;
-    it just cannot self-terminate, and falls back to the reaper."""
+    """A build configuration, not a runtime failure: a laptop, or an image built
+    without the wheel step. Renders nothing, so nothing is installed and nothing
+    is verified. The API server's Dockerfile asserts the wheel IS present, so on
+    the control plane this cannot silently happen."""
     monkeypatch.setattr(node_autodown, 'find_wheel', lambda: None)
     v = node_autodown.template_variables()
     assert v['lyceum_file_mounts'] == {}
@@ -233,15 +235,53 @@ def test_install_command_cannot_contain_a_yaml_mapping_indicator(monkeypatch,
     assert ' #' not in node_autodown.PTH_LINE
 
 
-def test_install_failure_does_not_fail_the_launch(monkeypatch, tmp_path):
-    """A node that cannot install the plugin should still run the job. The
-    alternative -- aborting the launch -- trades a cost bug for an outage."""
+def test_install_failure_fails_the_launch(monkeypatch, tmp_path):
+    """A node that cannot delete itself must not exist.
+
+    Lyceum has no stop and no cloud-side TTL, so such a node bills from `ready`
+    until a human notices -- unbounded, up to $63.92/h. A failed launch costs
+    one retry. This previously swallowed failures with `|| true`, reasoning that
+    a node should still run its job; that traded an unbounded cost risk for a
+    bounded availability one, in the wrong direction.
+    """
+    import re
     wheel = tmp_path / 'w.whl'
     wheel.write_bytes(b'')
     monkeypatch.setattr(node_autodown, 'find_wheel', lambda: wheel)
     cmd = node_autodown.template_variables()['lyceum_node_setup_command']
-    assert '||' in cmd and 'true' in cmd.split('||')[-1], (
-        'the install must not be able to fail the setup step')
+    assert '|| true' not in cmd
+    # `||` inside a $(...) is python discovery, not a swallowed failure. Strip
+    # the substitutions and require the top-level chain to be pure `&&`.
+    top_level = re.sub(r'\$\([^)]*\)', 'X', cmd)
+    assert '||' not in top_level, (
+        f'a top-level `||` swallows the failure: {top_level}')
+
+
+def test_the_install_verifies_the_capability_not_the_artifact(monkeypatch,
+                                                              tmp_path):
+    """`pip install` exiting 0 says a file was copied. It does not say the
+    skylet will resolve the cloud when it tries to tear this node down half a
+    day later -- which is the only thing that matters. So setup runs the actual
+    registration and requires the two lookups autodown makes."""
+    wheel = tmp_path / 'w.whl'
+    wheel.write_bytes(b'')
+    monkeypatch.setattr(node_autodown, 'find_wheel', lambda: wheel)
+    cmd = node_autodown.template_variables()['lyceum_node_setup_command']
+    for needed in ('node_autodown._register()', 'CLOUD_REGISTRY.from_str',
+                   'get_registered_provisioner'):
+        assert needed in cmd, f'setup does not verify {needed}'
+
+
+def test_the_verification_snippet_passes_where_the_plugin_is_installed():
+    """Run the snippet's logic in-process. If it could not pass in an
+    environment where the plugin IS correctly installed, it would fail every
+    launch -- turning the safety check into an outage."""
+    from skypilot_lyceum import node_autodown as na
+    na._register()
+    from sky.utils import registry
+    import sky.provision as p
+    assert registry.CLOUD_REGISTRY.from_str('lyceum') is not None
+    assert p.get_registered_provisioner('lyceum') is not None
 
 
 def test_template_override_supplies_the_node_install_variables(monkeypatch,

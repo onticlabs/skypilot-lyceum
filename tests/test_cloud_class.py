@@ -1100,24 +1100,26 @@ def test_query_status_does_not_raise(lyceum):
 
 
 # ---------------------------------------------------------------------------
-# Node-side autodown is IMPOSSIBLE for an out-of-tree cloud (verified upstream)
+# The skylet has no plugin hook — which is WHY node_autodown ships a .pth
 # ---------------------------------------------------------------------------
-def test_the_skylet_never_loads_plugins_so_nodes_cannot_self_terminate():
-    """Pins WHY the reaper is the authoritative teardown, not a backstop.
+def test_the_skylet_still_has_no_plugin_hook_so_the_pth_is_still_needed():
+    """A tripwire for the one hack in this package.
 
-    Autodown runs on the node: the skylet's autostop event calls
-    `sky.provision.terminate_instances('lyceum', ...)` locally. That dispatch
-    needs our provisioner REGISTERED in the skylet process, which only happens
-    via `plugins.load_plugins()` -- and the skylet never calls it. Installing
-    the package on the node is therefore not enough; there is no hook at all.
+    Autodown runs on the node: the skylet's autostop event dispatches
+    `terminate_instances('lyceum', ...)` locally, which needs our provisioner
+    REGISTERED in the skylet process. Registration normally happens via
+    `plugins.load_plugins()` -- and the skylet never calls it.
 
-    Measured consequence before this was understood: the cluster reached
-    AUTOSTOPPING on schedule and stuck there, VM billing 30+ minutes after its
-    job was killed.
+    This test used to conclude "therefore node-side autodown is impossible for
+    any out-of-tree cloud", and that conclusion was WRONG: it assumed the plugin
+    loader is the only way to run code in that process. A `.pth` file executes
+    at interpreter startup with no framework hook at all, which is what
+    `node_autodown.py` uses. Verified live 2026-08-07 -- the node deleted itself.
 
-    If this test ever fails, upstream has grown skylet-side plugin loading and
-    node self-termination becomes possible -- at which point the orphan reaper
-    stops being the only teardown mechanism and can be demoted to a backstop.
+    So the observation below is still true and still load-bearing; only the
+    conclusion changed. The day this test FAILS, upstream has grown skylet-side
+    plugin loading, the `.pth` becomes unnecessary, and node_autodown collapses
+    to an ordinary `enable()` call. Delete the hack then, not before.
     """
     import pathlib as _pathlib
 
@@ -1137,4 +1139,4 @@ def test_the_skylet_never_loads_plugins_so_nodes_cannot_self_terminate():
     skylet_callers = {c for c in callers if c.startswith('skylet/')}
     assert not skylet_callers, (
         'the skylet now loads plugins, so node-side autodown may be possible; '
-        f'revisit the reaper-as-authority design. callers: {skylet_callers}')
+        f'the .pth hack can then be deleted. callers: {skylet_callers}')
