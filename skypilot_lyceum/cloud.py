@@ -76,6 +76,11 @@ class Lyceum(clouds.Cloud):
             'The Lyceum API can only terminate a VM (DELETE /vms/{id}); it '
             'exposes no stop endpoint, so a stopped cluster could never be '
             'resumed. Use autodown instead.',
+        clouds.CloudImplementationFeatures.AUTOSTOP:
+            'Lyceum can only terminate a VM, so an idle timer can only ever '
+            'delete it -- use autodown (`--down`, or `down: true`). Without '
+            'this entry `sky launch -i N` (no --down) validates and then asks '
+            'the node to STOP, which fails on every retry while the VM bills.',
         clouds.CloudImplementationFeatures.MULTI_NODE:
             'Multi-node clusters are an enterprise-contract feature on Lyceum '
             'and are not exposed through the public VM API.',

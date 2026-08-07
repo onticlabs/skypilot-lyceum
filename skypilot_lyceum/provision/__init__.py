@@ -14,6 +14,7 @@ if typing.TYPE_CHECKING:
     from sky import resources as resources_lib
     from sky import task as task_lib
 
+from skypilot_lyceum import node_autodown
 from skypilot_lyceum.provision.config import bootstrap_instances
 from skypilot_lyceum.provision.instance import cleanup_ports
 from skypilot_lyceum.provision.instance import get_cluster_info
@@ -54,12 +55,16 @@ def template_override(
     both keywords as required, and the backend always passes them. Defaulting
     them costs nothing and keeps the hook callable from a test or a REPL.
 
-    Returns no extra variables -- everything the template needs comes from
-    `Lyceum.make_deploy_resources_variables`, and `test_cloud_class.py` asserts
-    that set matches the template's referenced variables in both directions.
+    The extra variables carry node-side autodown onto the machine (the wheel
+    mount and its install command). They come from here rather than from
+    `Lyceum.make_deploy_resources_variables` because they describe the SERVER's
+    filesystem, not the resource being provisioned -- `make_deploy_resources_variables`
+    is a pure function of the Resources and must stay that way.
     """
     del task, to_provision, _extra_launch_context, _is_launched_by_jobs_controller
-    return _sky_provision.TemplateSpec(template_path=TEMPLATE_PATH)
+    return _sky_provision.TemplateSpec(
+        template_path=TEMPLATE_PATH,
+        variables=node_autodown.template_variables())
 
 
 __all__ = [
