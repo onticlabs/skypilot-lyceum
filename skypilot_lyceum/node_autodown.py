@@ -20,7 +20,7 @@ Two halves, both here:
 
 A `.pth` is an unusual thing to ship, and it is here for one reason: it is the
 only place code can run inside the skylet process without a SkyPilot hook, and
-there is no such hook in 0.13.0. If upstream ever loads plugins in the skylet,
+there is no such hook in 0.14.2. If upstream ever loads plugins in the skylet,
 this whole module collapses to a normal `enable()` call.
 """
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Lyceum cloud provider plugin for SkyPilot 0.13.0.
+"""Lyceum cloud provider plugin for SkyPilot 0.14.2.
 
 Usage:
     import skypilot_lyceum; skypilot_lyceum.enable()
