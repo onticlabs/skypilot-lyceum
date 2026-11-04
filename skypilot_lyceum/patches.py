@@ -1,6 +1,6 @@
 """The unsupported seams, isolated and anchored.
 
-Everything else this package needs is public SkyPilot 0.13 API. The three
+Everything else this package needs is public SkyPilot 0.14 API. The three
 patches below are not, so each one CHECKS its upstream anchor before touching
 anything and raises `PatchDriftError` if the anchor has moved.
 

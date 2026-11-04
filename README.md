@@ -1,7 +1,7 @@
 # skypilot-lyceum
 
 An **out-of-tree cloud provider plugin** that teaches
-[SkyPilot](https://github.com/skypilot-org/skypilot) 0.13.0 how to run on
+[SkyPilot](https://github.com/skypilot-org/skypilot) 0.14.2 how to run on
 [Lyceum Cloud](https://lyceum.technology).
 
 This is not a fork of SkyPilot and it does not patch a SkyPilot checkout. It is
@@ -49,8 +49,8 @@ with GPU counts restricted to 1, 2, 4, or 8.
 
 ## Why an out-of-tree plugin at all
 
-SkyPilot 0.13 has enough public extension surface that adding a cloud no longer
-requires touching SkyPilot's source:
+SkyPilot 0.13 and later have enough public extension surface that adding a cloud
+no longer requires touching SkyPilot's source:
 
 | Mechanism | What it gives you |
 | --- | --- |
@@ -70,7 +70,8 @@ reach a developer machine.
 ## Three structural gaps in SkyPilot's out-of-tree support
 
 This is the part most likely to be useful to someone else writing an out-of-tree
-provider. All three were found the hard way, against SkyPilot 0.13.0.
+provider. All three were found the hard way, against SkyPilot 0.13.0, and all
+three still hold in 0.14.2.
 
 ### (a) The cluster-config template registry is a hardcoded dict — *solved*
 
@@ -183,7 +184,7 @@ in 2.7–9.1 s with nothing created and nothing charged.
 pip install git+https://github.com/onticlabs/skypilot-lyceum
 ```
 
-Requires Python ≥ 3.10 and pulls in `skypilot==0.13.0` — see
+Requires Python ≥ 3.10 and pulls in `skypilot==0.14.2` — see
 [Version pinning](#version-pinning) for why that is exact.
 
 ### Enable it
@@ -352,10 +353,10 @@ Known gaps: spot preemption detection, multi-node, and measured B200/B300 specs.
 
 ### Version pinning
 
-`skypilot==0.13.0` is an **exact** pin and a hard runtime dependency, not an
+`skypilot==0.14.2` is an **exact** pin and a hard runtime dependency, not an
 extra:
 
-* two of the three seams below are monkeypatches anchored to 0.13.0 internals;
+* two of the three seams below are monkeypatches anchored to 0.14.2 internals;
 * the provisioner's signatures are bound at dispatch by
   `inspect.signature(...).bind(...)`, so a renamed or dropped parameter upstream
   is a `TypeError` in the middle of a provisioning run rather than an import

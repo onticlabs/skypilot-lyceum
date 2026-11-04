@@ -14,7 +14,7 @@ classifiers = [
     "Topic :: System :: Distributed Computing",
 ]
 # skypilot is pinned EXACTLY, and is a hard runtime dependency rather than an
-# extra. THREE of this package's seams are monkeypatches anchored to 0.13.0
+# extra. THREE of this package's seams are monkeypatches anchored to 0.14.2
 # internals (`skylet.constants.ALL_CLOUDS`, the `sky.catalog.<cloud>_catalog`
 # module-name convention, and `backend_utils._add_auth_to_cluster_config`),
 # and the provisioner's
@@ -22,7 +22,7 @@ classifiers = [
 # against a different SkyPilot should fail at resolve time, loudly, rather than
 # at launch time inside a provisioning run. The patches also refuse to apply on
 # anchor drift, so this pin is the outer of two guards, not the only one.
-dependencies = ["requests>=2.31", "pandas>=2.0", "skypilot==0.13.0"]
+dependencies = ["requests>=2.31", "pandas>=2.0", "skypilot==0.14.2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov"]
